@@ -1,6 +1,7 @@
 package hkdf
 
 import (
+	"crypto/hmac"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
@@ -46,4 +47,15 @@ func New(hashFunc HashFunction) (*HKDF, error) {
 		hash:     h,
 		hashSize: size,
 	}, nil
+}
+
+// Extract performs the Extract step of HKDF, returning a pseudorandom key (PRK).
+func (hkdf *HKDF) Extract(salt, ikm []byte) []byte {
+	if salt == nil || len(salt) == 0 {
+		// If salt is not provided, use a string of HashLen zeros.
+		salt = make([]byte, hkdf.hashSize)
+	}
+	mac := hmac.New(hkdf.hash, salt)
+	mac.Write(ikm)
+	return mac.Sum(nil)
 }
