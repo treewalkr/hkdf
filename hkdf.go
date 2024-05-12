@@ -90,3 +90,9 @@ func (hkdf *HKDF) Expand(prk, info []byte, length int) ([]byte, error) {
 
 	return okm[:length], nil
 }
+
+// ExtractAndExpand is a convenience function that performs both Extract and Expand steps.
+func (hkdf *HKDF) ExtractAndExpand(salt, ikm, info []byte, length int) ([]byte, error) {
+	prk := hkdf.Extract(salt, ikm)
+	return hkdf.Expand(prk, info, length)
+}
