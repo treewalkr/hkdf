@@ -59,3 +59,34 @@ func (hkdf *HKDF) Extract(salt, ikm []byte) []byte {
 	mac.Write(ikm)
 	return mac.Sum(nil)
 }
+
+// ErrInvalidLength is returned when the desired key length is too long.
+var ErrInvalidLength = errors.New("hkdf: desired key length too long")
+
+// Expand performs the Expand step of HKDF, generating the output keying material (OKM).
+func (hkdf *HKDF) Expand(prk, info []byte, length int) ([]byte, error) {
+	if length <= 0 {
+		return nil, errors.New("hkdf: invalid desired length")
+	}
+
+	maxLength := 255 * hkdf.hashSize
+	if length > maxLength {
+		return nil, ErrInvalidLength
+	}
+
+	t := []byte{}
+	okm := []byte{}
+	counter := byte(1)
+
+	for len(okm) < length {
+		mac := hmac.New(hkdf.hash, prk)
+		mac.Write(t)
+		mac.Write(info)
+		mac.Write([]byte{counter})
+		t = mac.Sum(nil)
+		okm = append(okm, t...)
+		counter++
+	}
+
+	return okm[:length], nil
+}
