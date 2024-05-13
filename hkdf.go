@@ -7,6 +7,7 @@ import (
 	"crypto/sha512"
 	"errors"
 	"hash"
+	"io"
 )
 
 // HashFunction represents the type of hash function to use.
@@ -95,4 +96,58 @@ func (hkdf *HKDF) Expand(prk, info []byte, length int) ([]byte, error) {
 func (hkdf *HKDF) ExtractAndExpand(salt, ikm, info []byte, length int) ([]byte, error) {
 	prk := hkdf.Extract(salt, ikm)
 	return hkdf.Expand(prk, info, length)
+}
+
+// Reader is an io.Reader that implements the HKDF expand operation.
+// It allows streaming the derived key material.
+type Reader struct {
+	hkdf      *HKDF
+	prk       []byte
+	info      []byte
+	length    int
+	remaining int
+	t         []byte
+	counter   byte
+	buffer    []byte
+}
+
+// NewReader creates a new HKDF Reader.
+func (hkdf *HKDF) NewReader(prk, info []byte, length int) *Reader {
+	return &Reader{
+		hkdf:      hkdf,
+		prk:       prk,
+		info:      info,
+		length:    length,
+		remaining: length,
+		counter:   1,
+	}
+}
+
+func (r *Reader) Read(p []byte) (int, error) {
+	if r.remaining <= 0 {
+		return 0, io.EOF
+	}
+
+	n := len(p)
+	if n > r.remaining {
+		n = r.remaining
+	}
+
+	result := p[:n]
+	for i := 0; i < n; i++ {
+		if len(r.buffer) == 0 {
+			mac := hmac.New(r.hkdf.hash, r.prk)
+			mac.Write(r.t)
+			mac.Write(r.info)
+			mac.Write([]byte{r.counter})
+			r.t = mac.Sum(nil)
+			r.counter++
+			r.buffer = r.t
+		}
+		result[i] = r.buffer[0]
+		r.buffer = r.buffer[1:]
+		r.remaining--
+	}
+
+	return n, nil
 }
