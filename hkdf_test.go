@@ -3,6 +3,7 @@ package hkdf
 import (
 	"bytes"
 	"encoding/hex"
+	"io"
 	"testing"
 )
 
@@ -92,5 +93,44 @@ func TestHKDF_SHA1(t *testing.T) {
 
 	if !bytes.Equal(okm, expectedOKM) {
 		t.Errorf("OKM does not match expected value.\nGot:      %x\nExpected: %x", okm, expectedOKM)
+	}
+}
+
+func TestHKDF_ExpandError(t *testing.T) {
+	hkdf, _ := New(SHA256)
+	prk := make([]byte, hkdf.hashSize)
+	info := []byte("info")
+	length := 255*hkdf.hashSize + 1
+
+	_, err := hkdf.Expand(prk, info, length)
+	if err != ErrInvalidLength {
+		t.Errorf("Expected ErrInvalidLength, got %v", err)
+	}
+}
+
+func TestHKDF_Reader(t *testing.T) {
+	hkdf, _ := New(SHA256)
+	prk := hkdf.Extract([]byte{0x00}, []byte("input key material"))
+	info := []byte("info")
+	length := 64
+
+	reader := hkdf.NewReader(prk, info, length)
+	derived := make([]byte, length)
+	n, err := reader.Read(derived)
+	if err != nil && err != io.EOF {
+		t.Fatalf("Reader failed: %v", err)
+	}
+	if n != length {
+		t.Fatalf("Expected to read %d bytes, got %d", length, n)
+	}
+
+	// Ensure deterministic output by re-computing
+	okm, err := hkdf.Expand(prk, info, length)
+	if err != nil {
+		t.Fatalf("Expand failed: %v", err)
+	}
+
+	if !bytes.Equal(derived, okm) {
+		t.Errorf("Derived key does not match expected OKM.")
 	}
 }
