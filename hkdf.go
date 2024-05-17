@@ -19,13 +19,17 @@ const (
 	SHA512
 )
 
+// ErrInvalidLength is returned when the desired key length is too long.
+var ErrInvalidLength = errors.New("hkdf: desired key length too long")
+
 // HKDF represents the HKDF instance with the selected hash function.
 type HKDF struct {
-	hash     func() hash.Hash
-	hashSize int
+	hash     func() hash.Hash // Hash function constructor
+	hashSize int              // Size of the hash output in bytes
 }
 
 // New creates a new HKDF instance with the specified hash function.
+// Supported hash functions are SHA1, SHA256, and SHA512.
 func New(hashFunc HashFunction) (*HKDF, error) {
 	var h func() hash.Hash
 	var size int
@@ -51,9 +55,9 @@ func New(hashFunc HashFunction) (*HKDF, error) {
 }
 
 // Extract performs the Extract step of HKDF, returning a pseudorandom key (PRK).
+// If salt is nil or empty, a string of HashLen zeros is used as salt.
 func (hkdf *HKDF) Extract(salt, ikm []byte) []byte {
 	if salt == nil || len(salt) == 0 {
-		// If salt is not provided, use a string of HashLen zeros.
 		salt = make([]byte, hkdf.hashSize)
 	}
 	mac := hmac.New(hkdf.hash, salt)
@@ -61,10 +65,8 @@ func (hkdf *HKDF) Extract(salt, ikm []byte) []byte {
 	return mac.Sum(nil)
 }
 
-// ErrInvalidLength is returned when the desired key length is too long.
-var ErrInvalidLength = errors.New("hkdf: desired key length too long")
-
 // Expand performs the Expand step of HKDF, generating the output keying material (OKM).
+// It returns an error if the desired length exceeds 255 * HashLen.
 func (hkdf *HKDF) Expand(prk, info []byte, length int) ([]byte, error) {
 	if length <= 0 {
 		return nil, errors.New("hkdf: invalid desired length")
@@ -101,17 +103,18 @@ func (hkdf *HKDF) ExtractAndExpand(salt, ikm, info []byte, length int) ([]byte, 
 // Reader is an io.Reader that implements the HKDF expand operation.
 // It allows streaming the derived key material.
 type Reader struct {
-	hkdf      *HKDF
-	prk       []byte
-	info      []byte
-	length    int
-	remaining int
-	t         []byte
-	counter   byte
-	buffer    []byte
+	hkdf      *HKDF  // Reference to the HKDF instance
+	prk       []byte // Pseudorandom key
+	info      []byte // Context and application specific information
+	length    int    // Total bytes to generate
+	remaining int    // Bytes remaining to generate
+	t         []byte // Previous block
+	counter   byte   // Block counter
+	buffer    []byte // Current buffer block
 }
 
-// NewReader creates a new HKDF Reader.
+// NewReader creates a new HKDF Reader for streaming output.
+// It takes the pseudorandom key (PRK), info, and desired length.
 func (hkdf *HKDF) NewReader(prk, info []byte, length int) *Reader {
 	return &Reader{
 		hkdf:      hkdf,
@@ -123,6 +126,8 @@ func (hkdf *HKDF) NewReader(prk, info []byte, length int) *Reader {
 	}
 }
 
+// Read fills p with up to len(p) bytes of derived key material.
+// It returns the number of bytes filled and an error, if any.
 func (r *Reader) Read(p []byte) (int, error) {
 	if r.remaining <= 0 {
 		return 0, io.EOF
