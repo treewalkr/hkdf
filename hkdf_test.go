@@ -65,7 +65,7 @@ func TestHKDF_SHA256(t *testing.T) {
 	}
 
 	if !bytes.Equal(okm, expectedOKM) {
-		t.Errorf("OKM does not match expected value.\nGot:      %x\nExpected: %x", okm, expectedOKM)
+		t.Errorf("OKM does not match expected value.\nGot: %x\nExpected: %x", okm, expectedOKM)
 	}
 }
 

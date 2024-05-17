@@ -14,8 +14,11 @@ import (
 type HashFunction int
 
 const (
+	// SHA1 represents the SHA-1 hash function.
 	SHA1 HashFunction = iota
+	// SHA256 represents the SHA-256 hash function.
 	SHA256
+	// SHA512 represents the SHA-512 hash function.
 	SHA512
 )
 
@@ -57,7 +60,7 @@ func New(hashFunc HashFunction) (*HKDF, error) {
 // Extract performs the Extract step of HKDF, returning a pseudorandom key (PRK).
 // If salt is nil or empty, a string of HashLen zeros is used as salt.
 func (hkdf *HKDF) Extract(salt, ikm []byte) []byte {
-	if salt == nil || len(salt) == 0 {
+	if len(salt) == 0 {
 		salt = make([]byte, hkdf.hashSize)
 	}
 	mac := hmac.New(hkdf.hash, salt)
