@@ -100,3 +100,6 @@ Convenience function that combines `Extract` and `Expand` steps to produce the o
 func (hkdf *HKDF) NewReader(prk, info []byte, length int) *Reader
 ```
 Creates a new `Reader` that can be used to stream output keying material.
+
+## License
+This HKDF library is released under the MIT License. See the `LICENSE` file for details.
