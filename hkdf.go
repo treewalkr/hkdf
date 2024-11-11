@@ -57,6 +57,18 @@ func New(hashFunc HashFunction) (*HKDF, error) {
 	}, nil
 }
 
+// NewWithHash creates a new HKDF instance with a custom hash function.
+func NewWithHash(h func() hash.Hash) (*HKDF, error) {
+	if h == nil {
+		return nil, errors.New("hkdf: hash function cannot be nil")
+	}
+
+	return &HKDF{
+		hash:     h,
+		hashSize: h().Size(),
+	}, nil
+}
+
 // Extract performs the Extract step of HKDF, returning a pseudorandom key (PRK).
 // If salt is nil or empty, a string of HashLen zeros is used as salt.
 func (hkdf *HKDF) Extract(salt, ikm []byte) []byte {
