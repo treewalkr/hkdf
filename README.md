@@ -4,7 +4,7 @@ This library provides an implementation of the HMAC-based Extract-and-Expand Key
 
 ## Features
 
-- **Hash Support**: Includes support for `SHA1`, `SHA256`, and `SHA512`.
+- **Hash Support**: Includes support for `SHA1`, `SHA256`, and `SHA512`. Also allows custom hash functions.
 - **Flexible Interface**: Provides methods to perform the `Extract` and `Expand` steps independently, as well as a combined `ExtractAndExpand` method.
 - **Streamed Output**: Supports streaming output with an `io.Reader`-compatible `HKDF.Reader` for applications needing progressive key material generation.
 
@@ -55,8 +55,27 @@ func main() {
 
 Output:
 
-```
+```text
 Derived Key (OKM): 3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865
+```
+
+### Example with Custom Hash Function
+```go
+package main
+
+import (
+	"crypto/md5"
+	"log"
+
+	"github.com/treewalkr/hkdf"
+)
+
+func main() {
+	hkdfInstance, err := hkdf.NewWithHashFunc(md5.New)
+	if err != nil {
+		log.Fatalf("Failed to create HKDF instance: %v", err)
+	}
+}
 ```
 
 ### Streaming Output Using `Reader`
@@ -76,6 +95,12 @@ fmt.Printf("Derived Key (OKM): %x\n", derived)
 func New(hashFunc HashFunction) (*HKDF, error)
 ```
 Creates a new HKDF instance with the specified hash function. Supported hash functions are `SHA1`, `SHA256`, and `SHA512`.
+
+### `NewWithHash`
+```go
+func NewWithHash(hashFunc func() hash.Hash) (*HKDF, error)
+```
+Creates a new HKDF instance with a custom hash function.
 
 ### `Extract`
 ```go
